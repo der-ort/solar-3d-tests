@@ -1,9 +1,11 @@
 'use client'
 
-import { Backdrop, FlyControls, MeshDistortMaterial, MeshWobbleMaterial, OrbitControls, PerspectiveCamera, Text } from "@react-three/drei";
-import { Canvas, ThreeElements, useFrame } from "@react-three/fiber";
+import { Backdrop, FlyControls, MeshDistortMaterial, MeshWobbleMaterial, OrbitControls, Outlines, PerspectiveCamera, Ring, Stars, Text, Trail, useSpriteLoader, useTexture } from "@react-three/drei";
+import { Canvas, ThreeElements, useFrame, useLoader } from "@react-three/fiber";
 import { useRef, useState } from "react";
+import * as THREE from 'three';
 import './SpaceExplorer.css';
+import { Bloom, EffectComposer } from "@react-three/postprocessing";
 
 // USEFUL FUNCTIONS
 // -> useHelper function from drei
@@ -14,31 +16,34 @@ import './SpaceExplorer.css';
 
 interface PlanetProps {
   name: string;
-  color: string;
+  color?: string;
   velocity: number;
   distance: number;
   size: number;
+  textureURL?: string;
   orbitingAround?: string; //TODO: later: THREE.Object3D;
 }
 
 // RENDER ONE PLANET / CELESTIAL OBJECT
 // --------------------------------
-const Planet = ({name, color, velocity, size, distance, orbitingAround}:PlanetProps) => {
+const Planet = ({name, color, textureURL, velocity, size, distance, orbitingAround}:PlanetProps) => {
   
   // set constants for scaling etc.
   const systemScale = 0.1; // factor for scaling of sizes
-  const scaledDiameter = size / 10000;
+  const scaledDiameter = size / 100000;
   const speedFactor = 0.01;
 
   console.log("RENDERING: " + name);
 
   // ADD ANIMATION -> The ref must be present in the <mesh ref={}> so next knows where it points to
   const planetRef = useRef<THREE.Mesh>(); 
-  const textRef = useRef<THREE.Text>();
+  const textRef = useRef<THREE.Mesh>();
+  const boundingRingRef = useRef<THREE.Mesh>();
 
   // STATES -> HOVER + CLICKED 
   const [isHovered, setIsHovered] = useState(false);
   const [isClicked, setIsClicked] = useState(false);
+  
 
   let angle = 0; // -> angle between the last frame and the current frame, initialize as 0
   
@@ -47,7 +52,7 @@ const Planet = ({name, color, velocity, size, distance, orbitingAround}:PlanetPr
    // TODO: replace the absolute position with a function that retrieves the current position of the 
    // planet passed in the orbitingAround property. planet should be a THREE.Object3D object
    let position = [0,0,0];
-   if (!orbitingAround || orbitingAround === 'sun') position = [0,distance/10,0]
+   if (!orbitingAround || orbitingAround === 'sun') position = [0,distance * systemScale,0]
 
   // info on the useFrame function:
   // state: a lot of information about camera, mouse position etc.
@@ -76,13 +81,21 @@ const Planet = ({name, color, velocity, size, distance, orbitingAround}:PlanetPr
         textRef.current.position.set(0, scaledDiameter/10 + 1, 0); // Adjust the y position to offset the text above the planet
         textRef.current.lookAt(state.camera.position);
       }
+
+      // BOUNDING RING  REF -> ALWAYS FACE THE CAMERA
+
+      if (boundingRingRef.current) {
+        boundingRingRef.current.position.set(0, 0 , 0); // Adjust the y position to offset the text above the planet
+        boundingRingRef.current.lookAt(state.camera.position);
+      }
     }
   })
+   /* TODO REPOSITION THE CAMERA AND FACE THE OBJECT WHEN CLICKED */
 
-   // TODO: add texture and stuff
+   // TODO: add more shaders for halos and stuff
+    const colorMap = useTexture('public/' + textureURL ? textureURL.toString() : '2k_earth_nightmap.jpg')
 
   return (
-    
       <mesh 
         ref={planetRef} // reference for the animation
         onPointerEnter={(event) => (event.stopPropagation(), setIsHovered(true))}
@@ -93,43 +106,70 @@ const Planet = ({name, color, velocity, size, distance, orbitingAround}:PlanetPr
       {/* event.stopPropagation() means that the event is contained only to the mesh and no other element in the application cares about this event. */} 
         {/* A icosahedronGeometry might be more apt performance wise -> less polygons */}
         <icosahedronGeometry 
-            detail={12} 
-            args={[scaledDiameter / 10 , 2]} 
-            position={position}
+            args={[scaledDiameter , 12]} 
         />
         
         {/* IF IT IS THE SUN -> MAKE IT WOBBLE */}
         { name.toLowerCase() === 'sun' ? 
               <MeshWobbleMaterial 
-                speed={isHovered? 0.8 : 0.4} 
-                factor={isHovered? 0.6 : 0.2} 
-                color={isHovered ? 'orangered' : 'yellow'}
-                emissive={isHovered ? 'orange' : 'yellow'} // make it shine
-                emissiveIntensity={1}
+                speed={isHovered? 0.5 : 0.4} 
+                factor={isHovered? 0.2 : 0.1} 
+                map={colorMap} 
+                // color={isHovered ? 'orangered' : 'yellow'}
+                emissive={'orange'} // make it shine
+                emissiveIntensity={isHovered ? 0.6 : 0.6}
+                opacity={0.3}
               /> 
               : 
               <meshStandardMaterial 
-                color={isHovered ? 'orange' : 'lightblue'}  
+                // color={isHovered ? 'orange' : 'lightblue'}
+                map={colorMap} 
+                emissive={'white'} 
+                emissiveIntensity={0.3}
               />
         } 
 
+        { /* ADD A GLOW EFFECT*/}
+        <EffectComposer>
+          <Bloom 
+            intensity={1} 
+            luminanceThreshold={0} 
+            luminanceSmoothing={1} 
+            height={300}
+          />
+        </EffectComposer>
+
         {/* PLANET LABEL conditional rendering*/}
         {
-           {/*isClicked || isHovered*/}  ? 
+           !isClicked || !isHovered  ? 
             <Text 
               ref={textRef} // have a reference so the text can always face the camera
               position={[0, 0, 0]} 
-              color="white" 
+              color="darkgrey" 
               fontSize={1} 
               anchorX="center"
             >
               {name}
             </Text> 
           : 
-            '' // do nothing
+            null // do nothing
         };
-      </mesh>
 
+      {/* TODO ADD A RING AROUND THE PLANET TO MAKE IT MORE EASILY CLICKABLE */}
+       {/*TODO give it a transparent material and make it the clickable bounding box */}
+      {/* TODO {give it the DREI Outline effect} */}
+      { name.toLowerCase() !== 'sun' ? 
+          <>
+            <Ring
+            ref={boundingRingRef}
+            args={[scaledDiameter+5, scaledDiameter+5.1, 32]} 
+          /> 
+          
+          </>
+        : 
+          <Outlines thickness={0.4} color="red" />
+      }     
+      </mesh>
   );
 }
 
@@ -139,17 +179,17 @@ const planets = [
     name: "Sun",
     color: 'yellow',
     position: 0,
-    image: "",
+    textureURL: "2k_sun.jpg",
     velocity: 27,
     distance: 0,
-    size: 1392000,  // Diameter in kilometers
+    size: 1392050,  // Diameter in kilometers
     description: "The Sun is the star at the center of the Solar System. It is a nearly perfect sphere of hot plasma, with internal convective motion that generates a magnetic field via a dynamo process."
   }, 
   {
     name: "Mercury",
     color: 'purple',
     position: 1,
-    image: "",
+    textureURL: "2k_mercury.jpg",
     velocity: 47.4, // km/s
     distance: 57.9, // millions of kilometers
     size: 4879,  // Diameter in kilometers
@@ -159,7 +199,7 @@ const planets = [
     name: "Venus",
     color: 'red',
     position: 2,
-    image: "",
+    textureURL: "2k_venus_atmosphere.jpg",
     velocity: 35,
     distance: 108,
     size: 12104,  // Diameter in kilometers
@@ -169,7 +209,7 @@ const planets = [
     name: "Earth",
     color: 'blue',
     position: 3,
-    image: "",
+    textureURL: "2k_earth_daymap.jpg",
     velocity: 29.8,
     distance: 149.6,
     size: 12742,  // Diameter in kilometers
@@ -179,7 +219,7 @@ const planets = [
     name: "Mars",
     color: 'red',
     position: 4,
-    image: "",
+    textureURL: "2k_mars.jpg",
     velocity: 24,
     distance: 227,
     size: 6779,  // Diameter in kilometers
@@ -189,7 +229,7 @@ const planets = [
     name: "Jupiter",
     color: 'beige',
     position: 5,
-    image: "",
+    textureURL: "2k_jupiter.jpg",
     velocity: 13.1,
     distance: 778.3,
     size: 139820,  // Diameter in kilometers
@@ -199,7 +239,7 @@ const planets = [
     name: "Saturn",
     color: 'orange',
     position: 6,
-    image: "",
+    textureURL: "2k_saturn.jpg",
     velocity: 9.7,
     distance: 1427,
     size: 116460,  // Diameter in kilometers
@@ -209,7 +249,7 @@ const planets = [
     name: "Uranus",
     color: 'turquoise',
     position: 7,
-    image: "",
+    textureURL: "2k_uranus.jpg",
     velocity: 6.8,
     distance: 2870,
     size: 50724,  // Diameter in kilometers
@@ -219,7 +259,7 @@ const planets = [
     name: "Neptune",
     color: 'red',
     position: 8,
-    image: "",
+    textureURL: "2k_neptune.jpg",
     velocity: 5.4,
     distance: 4497,
     size: 49244,  // Diameter in kilometers
@@ -229,38 +269,76 @@ const planets = [
 
 const SpaceExplorer = () => {
 
+  // create Camera Reference:
+  const cameraRef = useRef<THREE.Camera>();
+
+  // ----------------------------------------------------------------
+  // RENDER THE SCENE
+  // ----------------------------------------------------------------
+  
   return (
     <div className="space-canvas-container">
       <Canvas>
 
         {/* SET THE DEFAULT CAMERA */}
-        <PerspectiveCamera
+        <PerspectiveCamera 
           makeDefault // !!!
-          position={[0, 0, 100]}
-          fov={100} // field of view
+          position={[0, 0, 500]}
+          fov={50} // field of view
         />
 
         {/* ORBIT CONTROLS */}
         <OrbitControls 
           enablePan={true}
           enableZoom={true}
-          enableRotate={false}
+          enableRotate={true}
+        />
+
+        {/* ADD STARS (NATIVE DREI COMPONENT) */}
+        <Stars 
+          radius={500} 
+          depth={200} 
+          count={25000}  
+          saturation={0} 
+          fade 
+          speed={1} 
+        />
+
+        <pointLight 
+          position={[0,0,0]} 
+          intensity={1.5} 
         />
 
         {/* SET THE LIGHTS */}
-
+        <ambientLight 
+          color={'yellow'} 
+          intensity={1} 
+        />
           {/* render all celestial objects that turn around the sun */}
               {
                 planets.map((planet) => (
                   <>
-                      <Planet 
-                        orbitingAround={'sun'} 
-                        name={planet.name} 
-                        color ={planet.color} 
-                        velocity={planet.velocity} 
-                        size={planet.size} 
-                        distance={planet.distance}
-                      />
+                      <Trail
+                        width={10} // Width of the line
+                        color={'white'} // Color of the line
+                        length={1000} // Length of the line
+                        decay={3} // How fast the line fades away
+                        local={true} // Wether to use the target's world or local positions
+                        stride={0} // Min distance between previous and current point
+                        interval={1} // Number of frames to wait before next calculation
+                        target={undefined} // Optional target. This object will produce the trail.
+                        // attenuation={(width) => width} // A function to define the width in each point along it.
+                      >
+                        <Planet 
+                          orbitingAround={'sun'} 
+                          name={planet.name} 
+                          color ={planet.color} 
+                          velocity={planet.velocity} 
+                          size={planet.size} 
+                          distance={planet.distance}
+                          textureURL={planet.textureURL}
+                        />
+                      </Trail>
                   </>
                 ))
               }
