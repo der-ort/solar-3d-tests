@@ -1,6 +1,6 @@
 import Image from "next/image";
 import styles from "./page.module.css";
-import SpaceExplorer from "@/components/SpaceExplorer";
+import SpaceExplorer from "@/components/SpaceExplorer/SpaceExplorer";
 
 
 export default function Home() {
