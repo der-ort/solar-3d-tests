@@ -11,6 +11,7 @@ interface PlanetProps {
     distance: number;
     size: number;
     textureURL?: string;
+    color: string;
     orbitingAround?: Vector3; //TODO: later: THREE.Object3D;
   }
 
@@ -52,7 +53,7 @@ const Planet = ({name, textureURL, velocity, size, distance, orbitingAround}:Pla
      // TODO: replace the absolute position with a function that retrieves the current position of the 
      // planet passed in the orbitingAround property. planet should be a THREE.Object3D object
 
-     let position = [0,0,0];
+     let position = new THREE.Vector3(0,0,0);
      if (!orbitingAround ) position = new THREE.Vector3(0, distance * systemScale, 0)
   
     // TODO MOVE THE ANIMATION TO A HIGHER LEVEL! SO IT CAN BE STOPPED GLOBALLY!
