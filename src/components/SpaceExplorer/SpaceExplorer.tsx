@@ -27,9 +27,9 @@ function renderAllCelestialObjects(celestialObjects: PlanetType[]) {
 
           {/* TRAIL -> a line that follows the planet to show its path... not necessary...*/}
           <Trail
-            width={1} // Width of the line
-            color={'pale'} // Color of the line
-            length={5} // Length of the line
+            width={1} 
+            color={'pale'}
+            length={5}
             decay={3} // How fast the line fades away
             local={true} // Wether to use the target's world or local positions
             stride={0} // Min distance between previous and current point

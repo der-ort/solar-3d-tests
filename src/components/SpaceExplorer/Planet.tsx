@@ -175,7 +175,7 @@ const Planet = ({name, textureURL, velocity, size, distance, orbitingAround}:Pla
             <Billboard> {/* MAKE IT FACE THE CAM ALWAYS*/}
               <Ring
                 ref={boundingRingRef}
-                args={[0, scaledDiameter+3, 32]} 
+                args={[scaledDiameter+2.8, scaledDiameter+3, 32]} 
               /> 
               <Outlines thickness={0.1} color="white" />
             </Billboard>
