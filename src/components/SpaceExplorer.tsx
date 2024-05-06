@@ -1,6 +1,6 @@
 'use client'
 
-import { Backdrop, FlyControls, MeshDistortMaterial, MeshWobbleMaterial, OrbitControls, Outlines, PerspectiveCamera, Ring, Stars, Text, Trail, useSpriteLoader, useTexture } from "@react-three/drei";
+import { Backdrop, Billboard, FlyControls, MeshDistortMaterial, MeshWobbleMaterial, OrbitControls, Outlines, PerspectiveCamera, Ring, Stars, Text, Trail, useSpriteLoader, useTexture } from "@react-three/drei";
 import { Canvas, ThreeElements, useFrame, useLoader } from "@react-three/fiber";
 import { useRef, useState } from "react";
 import * as THREE from 'three';
@@ -76,18 +76,6 @@ const Planet = ({name, color, textureURL, velocity, size, distance, orbitingArou
         planetRef.current.rotation.y += delta;
       }
 
-      // TEXT REF -> ALWAYS FACE THE CAMERA
-      if (textRef.current) {
-        textRef.current.position.set(0, scaledDiameter/10 + 1, 0); // Adjust the y position to offset the text above the planet
-        textRef.current.lookAt(state.camera.position);
-      }
-
-      // BOUNDING RING  REF -> ALWAYS FACE THE CAMERA
-
-      if (boundingRingRef.current) {
-        boundingRingRef.current.position.set(0, 0 , 0); // Adjust the y position to offset the text above the planet
-        boundingRingRef.current.lookAt(state.camera.position);
-      }
     }
   })
    /* TODO REPOSITION THE CAMERA AND FACE THE OBJECT WHEN CLICKED */
@@ -142,6 +130,7 @@ const Planet = ({name, color, textureURL, velocity, size, distance, orbitingArou
         {/* PLANET LABEL conditional rendering*/}
         {
            !isClicked || !isHovered  ? 
+            <Billboard>
             <Text 
               ref={textRef} // have a reference so the text can always face the camera
               position={[0, 0, 0]} 
@@ -151,6 +140,7 @@ const Planet = ({name, color, textureURL, velocity, size, distance, orbitingArou
             >
               {name}
             </Text> 
+            </Billboard>
           : 
             null // do nothing
         };
@@ -160,14 +150,15 @@ const Planet = ({name, color, textureURL, velocity, size, distance, orbitingArou
       {/* TODO {give it the DREI Outline effect} */}
       { name.toLowerCase() !== 'sun' ? 
           <>
+          <Billboard> {/* MAKE IT FACE THE CAM ALWAYS*/}
             <Ring
-            ref={boundingRingRef}
-            args={[scaledDiameter+5, scaledDiameter+5.1, 32]} 
-          /> 
-          
+              ref={boundingRingRef}
+              args={[scaledDiameter+3, scaledDiameter+3.1, 32]} 
+            /> 
+          </Billboard>
           </>
         : 
-          <Outlines thickness={0.4} color="red" />
+          <Outlines thickness={0.1} color="red" />
       }     
       </mesh>
   );
@@ -182,7 +173,7 @@ const planets = [
     textureURL: "2k_sun.jpg",
     velocity: 27,
     distance: 0,
-    size: 1392050,  // Diameter in kilometers
+    size: 1392000 * 0.1,  // Diameter in kilometers
     description: "The Sun is the star at the center of the Solar System. It is a nearly perfect sphere of hot plasma, with internal convective motion that generates a magnetic field via a dynamo process."
   }, 
   {
@@ -298,7 +289,7 @@ const SpaceExplorer = () => {
         <Stars 
           radius={500} 
           depth={200} 
-          count={25000}  
+          count={5000}  
           saturation={0} 
           fade 
           speed={1} 
@@ -318,11 +309,22 @@ const SpaceExplorer = () => {
               {
                 planets.map((planet) => (
                   <>
+
+                      {/* ORBIT -> TODO export to external function: drawOrbit(planetObject) */}
+                      <mesh>
+                        <ringGeometry 
+                          position={[0,0,0]}
+                          color={planet.color}             
+                          args={[planet.distance*0.1, planet.distance*0.1+0.2, 128]} 
+                        />
+                        <meshBasicMaterial color={planet.color} />
+                      </mesh>
+                      {/* TRAIL */}
                       <Trail
-                        width={10} // Width of the line
+                        width={5} // Width of the line
                         color={'white'} // Color of the line
-                        length={1000} // Length of the line
-                        decay={3} // How fast the line fades away
+                        length={1} // Length of the line
+                        decay={0.2} // How fast the line fades away
                         local={true} // Wether to use the target's world or local positions
                         stride={0} // Min distance between previous and current point
                         interval={1} // Number of frames to wait before next calculation
