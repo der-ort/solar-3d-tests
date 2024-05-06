@@ -53,7 +53,7 @@ const Planet = ({name, textureURL, velocity, size, distance, orbitingAround}:Pla
      // planet passed in the orbitingAround property. planet should be a THREE.Object3D object
 
      let position = [0,0,0];
-     if (!orbitingAround || orbitingAround === 'sun') position = [0, distance * systemScale, 0]
+     if (!orbitingAround ) position = new THREE.Vector3(0, distance * systemScale, 0)
   
     // TODO MOVE THE ANIMATION TO A HIGHER LEVEL! SO IT CAN BE STOPPED GLOBALLY!
     // info on the useFrame function:
@@ -78,7 +78,6 @@ const Planet = ({name, textureURL, velocity, size, distance, orbitingAround}:Pla
           // rotate the planet around itself
           planetRef.current.rotation.y += delta;
         }
-  
       }
     })
 
